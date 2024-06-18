@@ -3,3 +3,4 @@ datasets
 pandas
 matplotlib
 plotly
+geopandas

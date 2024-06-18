@@ -3,6 +3,8 @@ import pandas as pd
 from datasets import load_dataset
 import plotly.express as px
 import plotly.graph_objects as go
+import geopandas as gpd
+
 
 st.set_page_config(layout="wide")
 
@@ -25,7 +27,6 @@ def get_gender(civility):
 #df['gender'] = df['prenom'].apply(lambda x: d.get_gender(x))
 df['gender'] = df['civilite'].apply(lambda x: get_gender(x))
 
-# Filter out 'andy', 'unknown', and 'mostly_male', 'mostly_female' to simplify the analysis
 df_filtered = df[df['gender'].isin(['male', 'female'])]
 
 # Count occurrences of each gender
@@ -98,3 +99,39 @@ with col1:
     )
 
     st.plotly_chart(fig3, config={'displayModeBar': False})
+    
+
+with col2:
+    st.header('Region distribution')
+    st.write('We look at differences between regions.')
+    # Aggregate data by 'departement'
+    departement_gender_counts = df_filtered.groupby(['departement', 'gender']).size().reset_index(name='counts')
+    departement_pivot = departement_gender_counts.pivot(index='departement', columns='gender', values='counts').fillna(0)
+    departement_pivot['ratio'] = departement_pivot['female'] / (departement_pivot['male'] + departement_pivot['female'])
+
+    # Load the map of France departments
+    url = "https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements-version-simplifiee.geojson"
+    departments = gpd.read_file(url)
+
+    # Merge the ratio data with the departments geodataframe
+    departments = departments.merge(departement_pivot, left_on='code', right_on='departement')
+
+    # Plot the map
+    fig = px.choropleth(departments, 
+                        geojson=departments.geometry, 
+                        locations=departments.index, 
+                        color='ratio',
+                        color_continuous_scale='bluered',
+                        labels={'ratio': 'Female-to-Male Ratio'},
+                        title="Female-to-Male Ratio by Region in France")
+
+    fig.update_geos(fitbounds="locations", visible=False)
+    fig.update_layout(
+        margin={"r":0,"t":30,"l":0,"b":0},
+        coloraxis_colorbar=dict(title="Female-to-Male Ratio"),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)'
+    )
+    fig.update_geos(bgcolor='rgba(0,0,0,0)')
+
+    st.plotly_chart(fig, config={'displayModeBar': False})
