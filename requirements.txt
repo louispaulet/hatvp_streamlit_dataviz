@@ -2,5 +2,4 @@ streamlit
 datasets
 pandas
 matplotlib
-gender_guesser
 plotly
